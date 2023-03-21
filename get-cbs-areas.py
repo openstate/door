@@ -25,8 +25,6 @@ def _normalize_date_from_descrpition(description, year):
         m = re.match('(\d{2})-(\d{2})-(\d{4})', orig)
         if m is not None:
             orig = "%s-%s-%s" % (m.group(3), m.group(2), m.group(1),)
-        if re.match('^\d{4}-\d{2}-\d{2}', orig) is None:
-            orig = "1815-01-01"
         return orig
     else:
         return "%s-01-01" % (year,)
@@ -74,11 +72,21 @@ def get_normalized_areas_for_tables(tables, table_type):
         sleep(1)
     return result
 
+def get_provinces(current_year):
+    # This is all a bit hacky because provinces don't change much in terms of existence
+    province_areas = get_areas_for_table('70739ned', current_year, 'Provincie')  # hardcoded!
+    for p in province_areas:
+        # Flevoland is the only province with a creation date after 1815
+        if p['id'] == 'PV24':
+            p['created'] = '1986-01-01'
+        else:
+            p['created'] = '1815-01-01'
+    provinces = {a['id']: a for a in province_areas if a['id'].startswith('PV')}
+    return provinces
+
 def main(argv):
     current_year = datetime.now().year
-    province_areas = get_areas_for_table('70739ned', current_year, 'Provincie')  # hardcoded!
-    #pprint(province_areas)
-    provinces = {a['id']: a for a in province_areas if a['id'].startswith('PV')}
+    provinces = get_provinces(current_year)
     pprint(provinces)
     tables = get_area_tables()
     municipalities = get_normalized_areas_for_tables(tables, 'Gemeente')
