@@ -16,9 +16,14 @@ def get_area_tables():
             result.append({'id': c['Identifier'], 'title': c['Title']})
     return result
 
-def _normalize_date_from_descrpition(description):
+def _normalize_date_from_descrpition(description, year):
     if description is not None:
-        return description.split(' ')[-1]
+        orig = description.split(' ')[-1]
+        if re.match('^\d{4}', orig):
+            orig = "%s-01-01" % (orig,)
+        return orig
+    else:
+        return "%s-01-01" % (year,)
 
 def get_areas_for_table(table, year):
     resp = requests.get('https://opendata.cbs.nl/ODataFeed/OData/%s/RegioS?$format=json' % (table,))
@@ -28,21 +33,34 @@ def get_areas_for_table(table, year):
     result = [{
         'id': 'GM%s' % (a['Key'].strip(),),
         'name': a['Title'],
-        'created': _normalize_date_from_descrpition(a['Description']),
-        'year': year
+        'created': _normalize_date_from_descrpition(a['Description'], year),
+        'dissolved': "%s-12-31" % (year,)
     } for a in data['value']]
     return result
 
-def main(argv):
-    tables = get_area_tables()
+def get_normalized_areas_for_tables(tables):
+    result = {}
     print(tables)
     for t in tables:
         year = int(t['title'].split(' ')[-1])
         print(year, t['title'])
         areas = get_areas_for_table(t['id'], year)
         if areas is not None:
-            pprint(areas)
+            for a in areas:
+                current_id = a['id']
+                if current_id not in result:
+                    result[current_id] = a
+                if a['created'] and (a['created'] < result[current_id]['created']):
+                    result[current_id]['created'] = a['created']
+                if a['dissolved'] > result[current_id]['dissolved']:
+                    result[current_id]['dissolved'] = a['dissolved']
         sleep(1)
+    return result
+
+def main(argv):
+    tables = get_area_tables()
+    municipalities = get_normalized_areas_for_tables(tables)
+    pprint(municipalities)
     return 0
 
 if __name__ == '__main__':
