@@ -5,6 +5,7 @@ import sys
 import re
 from time import sleep
 from pprint import pprint
+from datetime import datetime
 
 import requests
 
@@ -29,12 +30,12 @@ def _normalize_date_from_descrpition(description, year):
         return "%s-01-01" % (year,)
 
 def _normalize_cbs_code(key):
-    if key.startswith('GM'):
+    if key.startswith('GM') or key.startswith('PV'):
         return key.strip()
     else:
         return 'GM%s' % (key.strip(),)
 
-def get_areas_for_table(table, year):
+def get_areas_for_table(table, year, table_type):
     resp = requests.get('https://opendata.cbs.nl/ODataFeed/OData/%s/RegioS?$format=json' % (table,))
     if resp.status_code < 200 or resp.status_code >= 300:
         return
@@ -42,18 +43,19 @@ def get_areas_for_table(table, year):
     result = [{
         'id': _normalize_cbs_code(a['Key']),
         'name': a['Title'],
+        'type': table_type,
         'created': _normalize_date_from_descrpition(a['Description'], year),
         'dissolved': "%s-12-31" % (year,)
     } for a in data['value']]
     return result
 
-def get_normalized_areas_for_tables(tables):
+def get_normalized_areas_for_tables(tables, table_type):
     result = {}
     print(tables)
     for t in tables:
         year = int(t['title'].split(' ')[-1])
         print(year, t['title'])
-        areas = get_areas_for_table(t['id'], year)
+        areas = get_areas_for_table(t['id'], year, table_type)
         if areas is not None:
             for a in areas:
                 current_id = a['id']
@@ -67,8 +69,14 @@ def get_normalized_areas_for_tables(tables):
     return result
 
 def main(argv):
+    current_year = datetime.now().year
+    province_areas = get_areas_for_table('70739ned', current_year, 'Provincie')  # hardcoded!
+    #pprint(province_areas)
+    provinces = {a['id']: a for a in province_areas if a['id'].startswith('PV')}
+    pprint(provinces)
+    return 0
     tables = get_area_tables()
-    municipalities = get_normalized_areas_for_tables(tables)
+    municipalities = get_normalized_areas_for_tables(tables, 'Gemeente')
     pprint(municipalities)
     #print("--> check:")
     #pprint(municipalities['GMG365'])
