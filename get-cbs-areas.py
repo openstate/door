@@ -21,9 +21,18 @@ def _normalize_date_from_descrpition(description, year):
         orig = description.split(' ')[-1]
         if re.match('^\d{4}', orig):
             orig = "%s-01-01" % (orig,)
+        m = re.match('(\d{2})-(\d{2})-(\d{4})', orig)
+        if m is not None:
+            orig = "%s-%s-%s" % (m.group(3), m.group(2), m.group(1),)
         return orig
     else:
         return "%s-01-01" % (year,)
+
+def _normalize_cbs_code(key):
+    if key.startswith('GM'):
+        return key.strip()
+    else:
+        return 'GM%s' % (key.strip(),)
 
 def get_areas_for_table(table, year):
     resp = requests.get('https://opendata.cbs.nl/ODataFeed/OData/%s/RegioS?$format=json' % (table,))
@@ -31,7 +40,7 @@ def get_areas_for_table(table, year):
         return
     data = resp.json()
     result = [{
-        'id': 'GM%s' % (a['Key'].strip(),),
+        'id': _normalize_cbs_code(a['Key']),
         'name': a['Title'],
         'created': _normalize_date_from_descrpition(a['Description'], year),
         'dissolved': "%s-12-31" % (year,)
@@ -61,6 +70,8 @@ def main(argv):
     tables = get_area_tables()
     municipalities = get_normalized_areas_for_tables(tables)
     pprint(municipalities)
+    #print("--> check:")
+    #pprint(municipalities['GMG365'])
     return 0
 
 if __name__ == '__main__':
