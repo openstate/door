@@ -25,6 +25,8 @@ def _normalize_date_from_descrpition(description, year):
         m = re.match('(\d{2})-(\d{2})-(\d{4})', orig)
         if m is not None:
             orig = "%s-%s-%s" % (m.group(3), m.group(2), m.group(1),)
+        if re.match('^\d{4}-\d{2}-\d{2}', orig) is None:
+            orig = "1815-01-01"
         return orig
     else:
         return "%s-01-01" % (year,)
@@ -40,9 +42,13 @@ def get_areas_for_table(table, year, table_type):
     if resp.status_code < 200 or resp.status_code >= 300:
         return
     data = resp.json()
+    if table_type == 'Gemeente':
+        title_prefix = ''
+    else:
+        title_prefix = '%s ' % (table_type,)
     result = [{
         'id': _normalize_cbs_code(a['Key']),
-        'name': a['Title'],
+        'name': '%s%s' % (title_prefix, a['Title'].replace(' (PV)', ''),),
         'type': table_type,
         'created': _normalize_date_from_descrpition(a['Description'], year),
         'dissolved': "%s-12-31" % (year,)
@@ -74,7 +80,6 @@ def main(argv):
     #pprint(province_areas)
     provinces = {a['id']: a for a in province_areas if a['id'].startswith('PV')}
     pprint(provinces)
-    return 0
     tables = get_area_tables()
     municipalities = get_normalized_areas_for_tables(tables, 'Gemeente')
     pprint(municipalities)
