@@ -6,6 +6,7 @@ import re
 from time import sleep
 from pprint import pprint
 from datetime import datetime
+import json
 
 import requests
 
@@ -55,10 +56,10 @@ def get_areas_for_table(table, year, table_type):
 
 def get_normalized_areas_for_tables(tables, table_type):
     result = {}
-    print(tables)
+    #print(tables)
     for t in tables:
         year = int(t['title'].split(' ')[-1])
-        print(year, t['title'])
+        #print(year, t['title'])
         areas = get_areas_for_table(t['id'], year, table_type)
         if areas is not None:
             for a in areas:
@@ -85,12 +86,16 @@ def get_provinces(current_year):
     return provinces
 
 def main(argv):
+    current_date = datetime.now()
     current_year = datetime.now().year
     provinces = get_provinces(current_year)
-    pprint(provinces)
     tables = get_area_tables()
     municipalities = get_normalized_areas_for_tables(tables, 'Gemeente')
-    pprint(municipalities)
+    for k in [provinces, municipalities]:
+        for i in k:
+            if k[i]['dissolved'] > current_date.isoformat()[0:10]:
+                k[i]['dissolved'] = None
+    print(json.dumps(list(provinces.values()) + list(municipalities.values())))
     #print("--> check:")
     #pprint(municipalities['GMG365'])
     return 0
