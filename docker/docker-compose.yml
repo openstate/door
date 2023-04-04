@@ -6,12 +6,4 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ../:/opt/door
-    networks:
-      - door
-      - nginx-load-balancer
     restart: always
-networks:
-  door:
-  nginx-load-balancer:
-    external:
-      name: docker_nginx-load-balancer
